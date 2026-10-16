@@ -256,7 +256,9 @@ function riskBadge(risk){
 }
 
 function probability(p){
- return p==null?'Not available':(Number(p)*100).toFixed(2)+'%';
+ return p==null||!Number.isFinite(Number(p))
+  ?'Not available'
+  :(Number(p)*100).toFixed(2)+'%';
 }
 
 function setTab(name){
@@ -326,28 +328,31 @@ function renderOverview(){
  ).join('')||'<tr><td colspan="4">No predictions available.</td></tr>';
 }
 
+/* Inspect the prediction and original amount from the same active row. */
 function renderInspect(){
  const id=$('transactionSelect').value;
+ const index=activeRows.findIndex((row,i)=>transactionId(row,i)===id);
 
- if(!id){
+ if(index<0 || !activeResults[index]){
   $('inspectResult').classList.add('hidden');
-  $('inspectMessage').innerHTML='<div class="error">No transactions are available to inspect.</div>';
+  $('inspectMessage').textContent='No prediction exists for this transaction in the active dataset.';
   return;
  }
 
- const result=activeResults.find(r=>String(r.transaction_id)===id);
+ const row=activeRows[index];
+ const result=activeResults[index];
+ const rawAmount=getKey(row,'Amount');
+ const amount=Number(rawAmount);
 
- if(!result){
+ if(rawAmount===undefined || String(rawAmount).trim()==='' || !Number.isFinite(amount)){
   $('inspectResult').classList.add('hidden');
-  $('inspectMessage').innerHTML='<div class="error">No prediction exists for this transaction in the active dataset.</div>';
+  $('inspectMessage').textContent='The selected CSV row has a missing or invalid Amount.';
   return;
  }
-
- $('inspectMessage').innerHTML='';
 
  const details=[
-  ['Transaction ID',result.transaction_id],
-  ['Amount',Number(result.amount).toFixed(2)],
+  ['Transaction ID',transactionId(row,index)],
+  ['Amount',amount.toFixed(2)],
   ['Risk assessment',result.risk_assessment],
   ['Fraud probability',probability(result.fraud_probability)],
   ['Actual dataset label',result.actual_label||'Not provided'],
@@ -363,6 +368,7 @@ function renderInspect(){
   ).join('')}</div>
   <div class="notice">Prediction is based on the saved Random Forest model. Actual labels are available only when supplied by the dataset.</div>`;
 
+ $('inspectMessage').textContent='';
  $('inspectResult').classList.remove('hidden');
 }
 
@@ -426,10 +432,19 @@ $('refreshBtn').addEventListener('click',async()=>{
  b.textContent='Refreshing…';
 
  try{
-  activeResults=await scoreBatch(activeRows.map(toTransaction));
-  if(activeDatasetName==='Demo sample')demoResults=activeResults.slice();
+  const refreshed=await scoreBatch(activeRows.map(toTransaction));
+  activeResults=refreshed;
+
+  if(activeDatasetName==='Demo sample'){
+   demoResults=refreshed.slice();
+  }else{
+   uploadedResults=refreshed.slice();
+  }
+
   renderOverview();
-  $('overviewMessage').textContent=`Predictions refreshed for ${activeDatasetName}.`;
+
+  $('overviewMessage').textContent=
+   `Predictions refreshed for ${activeDatasetName}.`;
  }catch(e){
   $('overviewMessage').innerHTML=`<div class="error">${esc(e.message)}</div>`;
  }finally{
@@ -503,18 +518,29 @@ $('analyzeCsvBtn').addEventListener('click',async()=>{
   if(!rows.length)throw new Error('The CSV file is empty.');
   if(rows.length>500)throw new Error('Maximum 500 data rows per upload.');
 
-  // Validate the complete file before changing the active dashboard dataset.
   const transactions=rows.map(toTransaction);
   const results=await scoreBatch(transactions);
 
-  // Ignore a result if the user has cleared or started another upload.
   if(thisOperation!==operationId)return;
 
-  uploadedResults=results;
+  /*
+   * Preserve the upload's transaction IDs and source amounts.
+   * Keep the prediction paired with its original row by index.
+   */
+  uploadedResults=results.map((result,index)=>{
+   const row=rows[index];
+   const amount=Number(getKey(row,'Amount'));
 
-  // Use the uploaded data for all dashboard tabs.
+   return {
+    ...result,
+    transaction_id:transactionId(row,index),
+    amount,
+    actual_label:result.actual_label
+   };
+  });
+
   activeRows=rows;
-  activeResults=results.slice();
+  activeResults=uploadedResults.slice();
   activeDatasetName=file.name;
 
   populateTransactionSelector(rows);
@@ -575,7 +601,6 @@ $('downloadBtn').addEventListener('click',()=>{
 });
 
 $('clearCsvBtn').addEventListener('click',()=>{
- // Cancel any upload still running so it cannot overwrite the reset.
  operationId++;
 
  $('csvFile').value='';
@@ -590,7 +615,6 @@ $('clearCsvBtn').addEventListener('click',()=>{
 
  uploadedResults=[];
 
- // Restore the original demo dataset and its cached predictions.
  activeRows=demoRows.slice();
  activeResults=demoResults.slice();
  activeDatasetName='Demo sample';
