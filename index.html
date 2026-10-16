@@ -64,7 +64,7 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 <div class="brand"><div class="logo">F</div><div>
 <div class="eyebrow">Machine Learning · Random Forest</div>
 <h1>FraudWatch Dashboard</h1>
-<p class="sub">Credit card transaction risk analysis and demo dataset review.</p>
+<p class="sub">Credit card transaction risk analysis and dataset review.</p>
 </div></div>
 <div class="status-pill" id="apiStatus">Loading demo data…</div>
 </header>
@@ -77,19 +77,19 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 
 <section class="page active" id="page-overview">
 <div class="metrics">
-<div class="metric"><div class="metric-label">Demo transactions</div><div class="metric-value" id="mTotal">—</div><div class="metric-note">Loaded from sample CSV</div></div>
+<div class="metric"><div class="metric-label" id="datasetMetricLabel">Demo transactions</div><div class="metric-value" id="mTotal">—</div><div class="metric-note">Current active dataset</div></div>
 <div class="metric"><div class="metric-label">Potential fraud</div><div class="metric-value" id="mFraud">—</div><div class="metric-note">Model probability ≥ 50%</div></div>
 <div class="metric"><div class="metric-label">Review required</div><div class="metric-value" id="mReview">—</div><div class="metric-note">Model probability 30–49.99%</div></div>
 <div class="metric"><div class="metric-label">Likely legitimate</div><div class="metric-value" id="mLegit">—</div><div class="metric-note">Model probability below 30%</div></div>
 </div>
 <div class="layout">
 <div class="card">
-<div class="section-head"><div><h2>Recent demo predictions</h2><div class="muted">Latest rows from the sample dataset.</div></div><button class="btn secondary" id="refreshBtn">Refresh</button></div>
+<div class="section-head"><div><h2 id="recentTitle">Recent demo predictions</h2><div class="muted" id="recentSubtitle">Latest predictions from the active dataset.</div></div><button class="btn secondary" id="refreshBtn">Refresh</button></div>
 <div class="table-wrap"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th></tr></thead><tbody id="recentBody"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
 </div>
 <div class="card">
 <h2>How to use FraudWatch</h2><div class="spacer"></div>
-<p class="muted">Inspect a transaction to review a demo record by ID, or upload a CSV containing the model's 30 required features for batch analysis.</p>
+<p class="muted">Inspect individual records or upload a CSV containing the model's 30 required features for batch analysis.</p>
 <div class="notice"><strong>Dataset note:</strong> Demo records are samples from a public anonymized credit-card dataset. Demo IDs are labels for this project, not real bank transaction IDs.</div>
 <div class="notice"><strong>Model note:</strong> Model probabilities are estimates, not guarantees. This project is for demonstration and evaluation, not live financial decisions.</div>
 </div>
@@ -99,14 +99,14 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 
 <section class="page" id="page-inspect">
 <div class="card">
-<div class="section-head"><div><h2>Inspect a transaction</h2><div class="muted">Select a demo record and inspect the model result.</div></div></div>
+<div class="section-head"><div><h2>Inspect a transaction</h2><div class="muted" id="inspectSubtitle">Select a record from the active dataset.</div></div></div>
 <div class="form-grid">
-<div><label class="field-label" for="transactionSelect">Demo transaction ID</label><select id="transactionSelect"><option value="">Loading demo transactions…</option></select></div>
+<div><label class="field-label" for="transactionSelect">Transaction ID</label><select id="transactionSelect"><option value="">Loading transactions…</option></select></div>
 <div style="display:flex;align-items:end"><button class="btn primary" id="inspectBtn">Inspect transaction</button></div>
 </div>
 <div id="inspectMessage" style="margin-top:14px"></div>
 <div id="inspectResult" class="hidden"></div>
-<div class="notice">The actual label is shown only because this is an evaluation sample. Real transactions would not have known labels at prediction time.</div>
+<div class="notice">Actual dataset labels are shown only when the uploaded CSV includes a Class column. Real transactions normally have no known label at prediction time.</div>
 </div>
 </section>
 
@@ -118,7 +118,7 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 <div class="file-info">Optional columns: Demo_Transaction_ID (or Transaction ID) and Class (0 = legitimate, 1 = fraud). Maximum 500 rows.</div>
 <div class="btn-row" style="margin-top:15px">
 <button class="btn primary" id="analyzeCsvBtn">Analyze CSV</button>
-<button class="btn secondary" id="clearCsvBtn">Clear</button>
+<button class="btn secondary" id="clearCsvBtn">Clear and restore demo</button>
 <button class="btn quiet hidden" id="downloadBtn">Download results CSV</button>
 </div>
 <div id="csvMessage" style="margin-top:14px"></div>
@@ -134,9 +134,15 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 
 const API='/api';
 const FEATURES=['Time',...Array.from({length:28},(_,i)=>'V'+(i+1)),'Amount'];
-let sampleRows=[];
-let sampleResults=[];
-let csvResults=[];
+
+let demoRows=[];
+let demoResults=[];
+let activeRows=[];
+let activeResults=[];
+let uploadedResults=[];
+let activeDatasetName='Demo sample';
+let operationId=0;
+
 const $=id=>document.getElementById(id);
 
 function esc(value){
@@ -144,21 +150,34 @@ function esc(value){
 }
 
 function parseCSV(text){
- const rows=[];let row=[],field='',quoted=false;
+ const rows=[];
+ let row=[],field='',quoted=false;
+
  for(let i=0;i<text.length;i++){
   const c=text[i];
+
   if(quoted){
    if(c==='"'&&text[i+1]==='"'){field+='"';i++;}
    else if(c==='"'){quoted=false;}
    else field+=c;
   }else if(c==='"')quoted=true;
   else if(c===','){row.push(field);field='';}
-  else if(c==='\n'){row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);row=[];field='';}
-  else field+=c;
+  else if(c==='\n'){
+   row.push(field.replace(/\r$/,''));
+   if(row.some(v=>v!==''))rows.push(row);
+   row=[];field='';
+  }else field+=c;
  }
- if(field!==''||row.length){row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);}
+
+ if(field!==''||row.length){
+  row.push(field.replace(/\r$/,''));
+  if(row.some(v=>v!==''))rows.push(row);
+ }
+
  if(!rows.length)return[];
+
  const headers=rows.shift().map(h=>h.trim());
+
  return rows.map(cols=>{
   const obj={};
   headers.forEach((h,i)=>obj[h]=(cols[i]??'').trim());
@@ -172,99 +191,203 @@ function getKey(obj,wanted){
  return found===undefined?undefined:obj[found];
 }
 
+function transactionId(row,index){
+ return String(
+  getKey(row,'Demo_Transaction_ID') ??
+  getKey(row,'Transaction_ID') ??
+  getKey(row,'Transaction ID') ??
+  `CSV-${String(index+1).padStart(4,'0')}`
+ );
+}
+
 function toTransaction(row,index){
  const features={};
+
  for(const name of FEATURES){
   const v=getKey(row,name);
+
   if(v===undefined||String(v).trim()===''||!Number.isFinite(Number(v))){
    throw new Error(`Row ${index+2}: missing or invalid value for ${name}.`);
   }
+
   features[name]=Number(v);
  }
- const id=getKey(row,'Demo_Transaction_ID')??getKey(row,'Transaction_ID')??getKey(row,'Transaction ID')??`CSV-${String(index+1).padStart(4,'0')}`;
+
  const actual=getKey(row,'Class');
- return {transaction_id:String(id),features,...(actual!==undefined&&actual!==''?{Class:actual}:{})};
+
+ return {
+  transaction_id:transactionId(row,index),
+  features,
+  ...(actual!==undefined&&actual!==''?{Class:actual}:{})
+ };
 }
 
 async function apiPost(body){
- const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const response=await fetch(API,{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify(body)
+ });
+
  const text=await response.text();
  let data;
- try{data=JSON.parse(text);}catch{throw new Error('API returned a non-JSON response. Check the Vercel deployment.');}
- if(!response.ok)throw new Error(data.error||`API request failed (${response.status}).`);
+
+ try{
+  data=JSON.parse(text);
+ }catch{
+  throw new Error('API returned a non-JSON response. Check the Vercel deployment.');
+ }
+
+ if(!response.ok){
+  throw new Error(data.error||`API request failed (${response.status}).`);
+ }
+
+ if(!Array.isArray(data.results)){
+  throw new Error('The prediction API did not return a results array.');
+ }
+
  return data;
 }
 
 function riskBadge(risk){
- const c=risk==='POTENTIAL FRAUD'?'fraud':risk==='REVIEW REQUIRED'?'review':'legit';
+ const c=risk==='POTENTIAL FRAUD'?'fraud':
+         risk==='REVIEW REQUIRED'?'review':'legit';
  return `<span class="badge ${c}">${esc(risk)}</span>`;
 }
-function probability(p){return p==null?'Not available':(Number(p)*100).toFixed(2)+'%';}
+
+function probability(p){
+ return p==null?'Not available':(Number(p)*100).toFixed(2)+'%';
+}
 
 function setTab(name){
- document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.page===name));
- document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));
+ document.querySelectorAll('.tab').forEach(b=>
+  b.classList.toggle('active',b.dataset.page===name)
+ );
+ document.querySelectorAll('.page').forEach(p=>
+  p.classList.toggle('active',p.id==='page-'+name)
+ );
 }
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.page)));
+
+document.querySelectorAll('.tab').forEach(b=>
+ b.addEventListener('click',()=>setTab(b.dataset.page))
+);
 
 async function scoreBatch(transactions){
  const all=[];
+
  for(let i=0;i<transactions.length;i+=100){
   const data=await apiPost({transactions:transactions.slice(i,i+100)});
   all.push(...data.results);
  }
+
+ if(all.length!==transactions.length){
+  throw new Error(`Expected ${transactions.length} predictions but received ${all.length}.`);
+ }
+
  return all;
 }
 
+function populateTransactionSelector(rows){
+ $('transactionSelect').innerHTML=rows.map((row,i)=>{
+  const id=transactionId(row,i);
+  const amount=Number(getKey(row,'Amount'));
+
+  return `<option value="${esc(id)}">${esc(id)} — Amount ${Number.isFinite(amount)?amount.toFixed(2):'—'}</option>`;
+ }).join('');
+
+ if(!rows.length){
+  $('transactionSelect').innerHTML='<option value="">No transactions available</option>';
+ }
+}
+
 function renderOverview(){
- const count=r=>sampleResults.filter(x=>x.risk_assessment===r).length;
- $('mTotal').textContent=sampleResults.length;
+ $('datasetMetricLabel').textContent=
+  activeDatasetName==='Demo sample'?'Demo transactions':'Uploaded transactions';
+
+ $('recentTitle').textContent=
+  activeDatasetName==='Demo sample'?'Recent demo predictions':'Recent uploaded-file predictions';
+
+ $('recentSubtitle').textContent=`Latest predictions from ${activeDatasetName}.`;
+
+ const count=r=>activeResults.filter(x=>x.risk_assessment===r).length;
+
+ $('mTotal').textContent=activeResults.length;
  $('mFraud').textContent=count('POTENTIAL FRAUD');
  $('mReview').textContent=count('REVIEW REQUIRED');
  $('mLegit').textContent=count('LIKELY LEGITIMATE');
- $('recentBody').innerHTML=sampleResults.slice(-10).reverse().map(r=>
-  `<tr><td>${esc(r.transaction_id)}</td><td>${Number(r.amount).toFixed(2)}</td><td>${riskBadge(r.risk_assessment)}</td><td>${probability(r.fraud_probability)}</td></tr>`
+
+ $('recentBody').innerHTML=activeResults.slice(-10).reverse().map(r=>
+  `<tr>
+   <td>${esc(r.transaction_id)}</td>
+   <td>${Number(r.amount).toFixed(2)}</td>
+   <td>${riskBadge(r.risk_assessment)}</td>
+   <td>${probability(r.fraud_probability)}</td>
+  </tr>`
  ).join('')||'<tr><td colspan="4">No predictions available.</td></tr>';
 }
 
 function renderInspect(){
  const id=$('transactionSelect').value;
- if(!id){$('inspectMessage').innerHTML='<div class="error">No demo transaction is available. Check that demo_transactions.csv exists in the repository root.</div>';return;}
- const result=sampleResults.find(r=>r.transaction_id===id);
- if(!result){
+
+ if(!id){
   $('inspectResult').classList.add('hidden');
-  $('inspectMessage').innerHTML='<div class="error">The transaction is selectable, but its prediction is unavailable. Check the API status above.</div>';
+  $('inspectMessage').innerHTML='<div class="error">No transactions are available to inspect.</div>';
   return;
  }
+
+ const result=activeResults.find(r=>String(r.transaction_id)===id);
+
+ if(!result){
+  $('inspectResult').classList.add('hidden');
+  $('inspectMessage').innerHTML='<div class="error">No prediction exists for this transaction in the active dataset.</div>';
+  return;
+ }
+
  $('inspectMessage').innerHTML='';
+
  const details=[
-  ['Transaction ID',id],
+  ['Transaction ID',result.transaction_id],
   ['Amount',Number(result.amount).toFixed(2)],
   ['Risk assessment',result.risk_assessment],
   ['Fraud probability',probability(result.fraud_probability)],
   ['Actual dataset label',result.actual_label||'Not provided'],
   ['Model class',result.prediction]
  ];
- $('inspectResult').innerHTML=`<div class="detail-grid">${details.map(([k,v])=>`<div class="detail"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div><div class="notice">Prediction is based on the saved Random Forest model. Actual label is shown for demo evaluation only.</div>`;
+
+ $('inspectResult').innerHTML=
+  `<div class="detail-grid">${details.map(([k,v])=>
+   `<div class="detail">
+    <div class="k">${esc(k)}</div>
+    <div class="v">${esc(v)}</div>
+   </div>`
+  ).join('')}</div>
+  <div class="notice">Prediction is based on the saved Random Forest model. Actual labels are available only when supplied by the dataset.</div>`;
+
  $('inspectResult').classList.remove('hidden');
 }
 
 async function init(){
- // IMPORTANT: load the CSV and populate the selector before checking the API.
  try{
   const response=await fetch('/demo_transactions.csv');
-  if(!response.ok)throw new Error('demo_transactions.csv is missing from the repository root.');
-  sampleRows=parseCSV(await response.text());
-  if(!sampleRows.length)throw new Error('The demo CSV contains no transactions.');
 
-  $('transactionSelect').innerHTML=sampleRows.map(r=>{
-   const id=getKey(r,'Demo_Transaction_ID')??getKey(r,'Transaction_ID')??getKey(r,'Transaction ID');
-   const amount=Number(getKey(r,'Amount'));
-   return `<option value="${esc(id)}">${esc(id)} — Amount ${Number.isFinite(amount)?amount.toFixed(2):'—'}</option>`;
-  }).join('');
+  if(!response.ok){
+   throw new Error('demo_transactions.csv is missing from the repository root.');
+  }
+
+  demoRows=parseCSV(await response.text());
+
+  if(!demoRows.length){
+   throw new Error('The demo CSV contains no transactions.');
+  }
+
+  populateTransactionSelector(demoRows);
+
+  activeRows=demoRows.slice();
+  activeDatasetName='Demo sample';
 
   $('apiStatus').textContent='Demo data loaded';
-  $('overviewMessage').textContent=`Loaded ${sampleRows.length} demo transaction records. Checking prediction API…`;
+  $('overviewMessage').textContent=
+   `Loaded ${demoRows.length} demo transaction records. Checking prediction API…`;
  }catch(e){
   $('apiStatus').textContent='Demo data error';
   $('overviewMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
@@ -273,30 +396,46 @@ async function init(){
   return;
  }
 
- // Prediction API failures must not empty the already populated dropdown.
  try{
   const health=await fetch(API);
+
   if(!health.ok)throw new Error('API status '+health.status);
   await health.json();
+
   $('apiStatus').textContent='API connected';
-  sampleResults=await scoreBatch(sampleRows.map(toTransaction));
+
+  demoResults=await scoreBatch(demoRows.map(toTransaction));
+  activeResults=demoResults.slice();
+
   renderOverview();
-  $('overviewMessage').textContent=`Loaded ${sampleResults.length} demo records and generated predictions.`;
+
+  $('overviewMessage').textContent=
+   `Loaded ${demoResults.length} demo records and generated predictions.`;
  }catch(e){
   $('apiStatus').textContent='Prediction API error';
-  $('overviewMessage').innerHTML=`<div class="error">The dropdown is loaded, but predictions failed: ${esc(e.message||String(e))}</div>`;
-  $('recentBody').innerHTML='<tr><td colspan="4">Predictions unavailable. The transaction selector should still be usable.</td></tr>';
+  $('overviewMessage').innerHTML=
+   `<div class="error">Demo data loaded, but predictions failed: ${esc(e.message||String(e))}</div>`;
+  $('recentBody').innerHTML=
+   '<tr><td colspan="4">Predictions unavailable. Check the API deployment.</td></tr>';
  }
 }
 
 $('refreshBtn').addEventListener('click',async()=>{
- const b=$('refreshBtn');b.disabled=true;b.textContent='Refreshing…';
+ const b=$('refreshBtn');
+ b.disabled=true;
+ b.textContent='Refreshing…';
+
  try{
-  sampleResults=await scoreBatch(sampleRows.map(toTransaction));
+  activeResults=await scoreBatch(activeRows.map(toTransaction));
+  if(activeDatasetName==='Demo sample')demoResults=activeResults.slice();
   renderOverview();
-  $('overviewMessage').textContent='Demo predictions refreshed.';
- }catch(e){$('overviewMessage').innerHTML=`<div class="error">${esc(e.message)}</div>`;}
- finally{b.disabled=false;b.textContent='Refresh';}
+  $('overviewMessage').textContent=`Predictions refreshed for ${activeDatasetName}.`;
+ }catch(e){
+  $('overviewMessage').innerHTML=`<div class="error">${esc(e.message)}</div>`;
+ }finally{
+  b.disabled=false;
+  b.textContent='Refresh';
+ }
 });
 
 $('inspectBtn').addEventListener('click',renderInspect);
@@ -307,40 +446,164 @@ function csvCell(v){
  return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
 
+function renderCsvResults(){
+ $('csvBody').innerHTML=uploadedResults.map(r=>
+  `<tr>
+   <td>${esc(r.transaction_id)}</td>
+   <td>${Number(r.amount).toFixed(2)}</td>
+   <td>${riskBadge(r.risk_assessment)}</td>
+   <td>${probability(r.fraud_probability)}</td>
+   <td>${esc(r.actual_label||'—')}</td>
+  </tr>`
+ ).join('');
+
+ const fraud=uploadedResults.filter(r=>r.risk_assessment==='POTENTIAL FRAUD').length;
+ const review=uploadedResults.filter(r=>r.risk_assessment==='REVIEW REQUIRED').length;
+ const legit=uploadedResults.filter(r=>r.risk_assessment==='LIKELY LEGITIMATE').length;
+
+ $('csvSummary').innerHTML=[
+  ['Transactions analyzed',uploadedResults.length],
+  ['Potential fraud',fraud],
+  ['Review required',review],
+  ['Likely legitimate',legit]
+ ].map(([k,v])=>
+  `<div class="metric">
+   <div class="metric-label">${esc(k)}</div>
+   <div class="metric-value">${v}</div>
+  </div>`
+ ).join('');
+
+ $('csvSummary').classList.remove('hidden');
+ $('csvTableWrap').classList.remove('hidden');
+ $('downloadBtn').classList.remove('hidden');
+}
+
 $('analyzeCsvBtn').addEventListener('click',async()=>{
  const file=$('csvFile').files[0];
- if(!file){$('csvMessage').innerHTML='<div class="error">Choose a CSV file first.</div>';return;}
- const b=$('analyzeCsvBtn');b.disabled=true;b.textContent='Analyzing…';
+
+ if(!file){
+  $('csvMessage').innerHTML='<div class="error">Choose a CSV file first.</div>';
+  return;
+ }
+
+ const thisOperation=++operationId;
+ const b=$('analyzeCsvBtn');
+
+ b.disabled=true;
+ b.textContent='Analyzing…';
+
  $('csvMessage').textContent='Reading CSV and running predictions…';
- $('csvSummary').classList.add('hidden');$('csvTableWrap').classList.add('hidden');$('downloadBtn').classList.add('hidden');
+ $('csvSummary').classList.add('hidden');
+ $('csvTableWrap').classList.add('hidden');
+ $('downloadBtn').classList.add('hidden');
+
  try{
   const rows=parseCSV(await file.text());
+
   if(!rows.length)throw new Error('The CSV file is empty.');
   if(rows.length>500)throw new Error('Maximum 500 data rows per upload.');
-  csvResults=await scoreBatch(rows.map(toTransaction));
-  $('csvBody').innerHTML=csvResults.map(r=>
-   `<tr><td>${esc(r.transaction_id)}</td><td>${Number(r.amount).toFixed(2)}</td><td>${riskBadge(r.risk_assessment)}</td><td>${probability(r.fraud_probability)}</td><td>${esc(r.actual_label||'—')}</td></tr>`
-  ).join('');
-  const fraud=csvResults.filter(r=>r.risk_assessment==='POTENTIAL FRAUD').length;
-  const review=csvResults.filter(r=>r.risk_assessment==='REVIEW REQUIRED').length;
-  const legit=csvResults.filter(r=>r.risk_assessment==='LIKELY LEGITIMATE').length;
-  $('csvSummary').innerHTML=[['Transactions analyzed',csvResults.length],['Potential fraud',fraud],['Review required',review],['Likely legitimate',legit]].map(([k,v])=>`<div class="metric"><div class="metric-label">${esc(k)}</div><div class="metric-value">${v}</div></div>`).join('');
-  $('csvSummary').classList.remove('hidden');$('csvTableWrap').classList.remove('hidden');$('downloadBtn').classList.remove('hidden');
-  $('csvMessage').innerHTML=`<div class="success">Analysis complete: ${csvResults.length} transactions scored.</div>`;
- }catch(e){$('csvMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;}
- finally{b.disabled=false;b.textContent='Analyze CSV';}
+
+  // Validate the complete file before changing the active dashboard dataset.
+  const transactions=rows.map(toTransaction);
+  const results=await scoreBatch(transactions);
+
+  // Ignore a result if the user has cleared or started another upload.
+  if(thisOperation!==operationId)return;
+
+  uploadedResults=results;
+
+  // Use the uploaded data for all dashboard tabs.
+  activeRows=rows;
+  activeResults=results.slice();
+  activeDatasetName=file.name;
+
+  populateTransactionSelector(rows);
+  renderOverview();
+
+  $('overviewMessage').textContent=
+   `Showing ${activeResults.length} predictions from uploaded file: ${file.name}.`;
+
+  $('inspectSubtitle').textContent=
+   `Select a transaction from ${file.name}.`;
+
+  $('inspectMessage').textContent='';
+  $('inspectResult').classList.add('hidden');
+
+  renderCsvResults();
+
+  $('csvMessage').innerHTML=
+   `<div class="success">Analysis complete: ${results.length} transactions scored. Overview and Inspect now use ${esc(file.name)}.</div>`;
+ }catch(e){
+  if(thisOperation===operationId){
+   $('csvMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
+  }
+ }finally{
+  if(thisOperation===operationId){
+   b.disabled=false;
+   b.textContent='Analyze CSV';
+  }
+ }
 });
 
 $('downloadBtn').addEventListener('click',()=>{
- if(!csvResults.length)return;
- const columns=['transaction_id','amount','risk_assessment','fraud_probability','prediction','actual_label'];
- const csv=[columns.join(','),...csvResults.map(r=>columns.map(c=>csvCell(r[c]??'')).join(','))].join('\n');
- const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
- const a=document.createElement('a');a.href=url;a.download='fraudwatch_predictions.csv';a.click();URL.revokeObjectURL(url);
+ if(!uploadedResults.length)return;
+
+ const columns=[
+  'transaction_id',
+  'amount',
+  'risk_assessment',
+  'fraud_probability',
+  'prediction',
+  'actual_label'
+ ];
+
+ const csv=[
+  columns.join(','),
+  ...uploadedResults.map(r=>columns.map(c=>csvCell(r[c]??'')).join(','))
+ ].join('\n');
+
+ const url=URL.createObjectURL(
+  new Blob([csv],{type:'text/csv;charset=utf-8;'})
+ );
+
+ const a=document.createElement('a');
+ a.href=url;
+ a.download='fraudwatch_predictions.csv';
+ a.click();
+
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 
 $('clearCsvBtn').addEventListener('click',()=>{
- $('csvFile').value='';$('csvMessage').textContent='';$('csvSummary').innerHTML='';$('csvSummary').classList.add('hidden');$('csvTableWrap').classList.add('hidden');$('csvBody').innerHTML='';$('downloadBtn').classList.add('hidden');csvResults=[];
+ // Cancel any upload still running so it cannot overwrite the reset.
+ operationId++;
+
+ $('csvFile').value='';
+ $('csvMessage').textContent='';
+ $('csvSummary').innerHTML='';
+ $('csvSummary').classList.add('hidden');
+ $('csvTableWrap').classList.add('hidden');
+ $('csvBody').innerHTML='';
+ $('downloadBtn').classList.add('hidden');
+ $('analyzeCsvBtn').disabled=false;
+ $('analyzeCsvBtn').textContent='Analyze CSV';
+
+ uploadedResults=[];
+
+ // Restore the original demo dataset and its cached predictions.
+ activeRows=demoRows.slice();
+ activeResults=demoResults.slice();
+ activeDatasetName='Demo sample';
+
+ populateTransactionSelector(activeRows);
+ renderOverview();
+
+ $('overviewMessage').textContent='Restored the original demo dataset.';
+ $('inspectSubtitle').textContent='Select a demo record from the sample dataset.';
+ $('inspectMessage').textContent='';
+ $('inspectResult').classList.add('hidden');
+
+ setTab('overview');
 });
 
 init();
