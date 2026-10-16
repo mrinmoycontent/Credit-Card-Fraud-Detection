@@ -2,375 +2,379 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Credit Card Fraud Detection</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --ink: #172033;
-      --muted: #65718a;
-      --line: #e2e8f0;
-      --brand: #3157d5;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--ink);
-      background: #f5f7fb;
-    }
-
-    .wrap {
-      max-width: 1050px;
-      margin: 0 auto;
-      padding: 36px 20px 56px;
-    }
-
-    header { margin-bottom: 24px; }
-
-    .eyebrow {
-      color: var(--brand);
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      margin: 9px 0 8px;
-      font-size: clamp(28px, 4vw, 40px);
-      letter-spacing: -.04em;
-    }
-
-    .sub {
-      margin: 0;
-      max-width: 760px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .panel {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 24px;
-      box-shadow: 0 10px 35px rgba(20, 35, 70, .05);
-    }
-
-    .topline {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    h2 { margin: 0; font-size: 19px; }
-
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 11px 15px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    button:disabled { opacity: .65; cursor: wait; }
-
-    .secondary { background: #eef2ff; color: #263e9e; }
-    .primary { background: var(--brand); color: white; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    label {
-      display: block;
-      color: #4b5872;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    input {
-      width: 100%;
-      border: 1px solid #d9e0eb;
-      border-radius: 9px;
-      padding: 10px 11px;
-      font-size: 14px;
-      color: var(--ink);
-      background: #fff;
-    }
-
-    input:focus {
-      outline: 2px solid #c8d3ff;
-      border-color: var(--brand);
-    }
-
-    .submitrow {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-top: 22px;
-    }
-
-    .result {
-      display: none;
-      margin-top: 22px;
-      padding: 18px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: #f8fafc;
-      overflow-wrap: anywhere;
-    }
-
-    .result.show { display: block; }
-    .result h3 { margin: 0 0 8px; }
-
-    .result p {
-      margin: 5px 0;
-      color: #4b5872;
-      line-height: 1.5;
-    }
-
-    .warning {
-      margin-top: 18px;
-      padding: 13px 15px;
-      border-radius: 10px;
-      background: #fff8e7;
-      color: #79551b;
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    #status { color: var(--muted); font-size: 13px; }
-
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .panel { padding: 18px; }
-    }
-
-    @media (max-width: 440px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FraudWatch | Credit Card Fraud Detection</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#64748b;--line:#e2e8f0;--brand:#3157d5;--blue:#eaf0ff;--green:#e8f8ef;--amber:#fff4d8;--red:#ffe9e9;--shadow:0 10px 32px rgba(24,39,75,.06)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+.shell{max-width:1200px;margin:auto;padding:28px 20px 48px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.brand{display:flex;gap:13px;align-items:center}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:23px;font-weight:900}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.13em;font-weight:800;color:var(--brand)}
+h1{font-size:clamp(25px,4vw,35px);margin:3px 0 0;letter-spacing:-.04em}
+.sub{color:var(--muted);margin:7px 0 0;line-height:1.5}
+.status-pill{border-radius:999px;background:#fff;border:1px solid var(--line);padding:9px 12px;color:var(--muted);font-size:12px;font-weight:700}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;background:#e9eef7;border-radius:13px;padding:5px;margin-bottom:20px}
+.tab{border:0;background:transparent;padding:11px 15px;border-radius:9px;color:#536078;font-weight:750;cursor:pointer}
+.tab.active{background:#fff;color:var(--brand);box-shadow:0 2px 8px #17203312}
+.page{display:none}.page.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:21px;box-shadow:var(--shadow);min-width:0}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:17px}
+h2{font-size:18px;margin:0}h3{font-size:15px;margin:0 0 12px}
+.muted{color:var(--muted);font-size:13px;line-height:1.5}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:17px}
+.metric{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px}
+.metric-label{color:var(--muted);font-size:12px;font-weight:700}
+.metric-value{font-size:28px;font-weight:850;letter-spacing:-.04em;margin-top:8px;overflow-wrap:anywhere}
+.metric-note{font-size:11px;color:var(--muted);margin-top:4px}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:750;cursor:pointer}
+.btn:disabled{opacity:.55;cursor:wait}
+.primary{background:var(--brand);color:#fff}.secondary{background:var(--blue);color:#2946a8}.quiet{background:#f1f5f9;color:#334155}
+.btn-row{display:flex;gap:9px;flex-wrap:wrap}
+.table-wrap{width:100%;overflow:auto;border:1px solid var(--line);border-radius:11px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:12px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid #edf0f5;white-space:nowrap}
+th{background:#f8fafc;color:#64748b;font-weight:800}
+tbody tr:last-child td{border-bottom:0}
+.badge{display:inline-block;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:850;letter-spacing:.02em}
+.fraud{background:var(--red);color:#a21d1d}.review{background:var(--amber);color:#885d00}.legit{background:var(--green);color:#17633a}
+.field-label{display:block;color:#4b5872;font-size:12px;font-weight:750;margin:0 0 7px}
+select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-radius:9px;background:white;color:var(--ink)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:15px}
+.detail{border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.detail .k{font-size:11px;color:var(--muted)}.detail .v{font-size:15px;font-weight:800;margin-top:5px;overflow-wrap:anywhere}
+.notice{margin-top:15px;padding:12px 14px;border-radius:10px;background:#f8fafc;border:1px solid var(--line);color:#526078;font-size:12px;line-height:1.55}
+.error{color:#b42318;background:#fff0f0;border:1px solid #ffd6d6;padding:11px 13px;border-radius:9px;font-size:12px;white-space:pre-wrap}
+.success{color:#166534;background:#effcf3;border:1px solid #c8f0d2;padding:11px 13px;border-radius:9px;font-size:12px}
+.hidden{display:none!important}.spacer{height:14px}
+.file-info{font-size:12px;color:var(--muted);margin-top:8px}
+.footer{text-align:center;color:#8290a5;font-size:11px;margin-top:22px}
+@media(max-width:800px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.shell{padding:18px 12px 32px}.card{padding:16px}.metrics{gap:9px}.metric{padding:13px}.metric-value{font-size:24px}.form-grid{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr 1fr}.tab{padding:10px 11px;font-size:12px}}
+</style>
 </head>
 <body>
-  <main class="wrap">
-    <header>
-      <div class="eyebrow">Machine Learning Project</div>
-      <h1>Credit Card Fraud Detection</h1>
-      <p class="sub">
-        Enter the 30 model features to get a prediction from your trained
-        Random Forest classifier. The V1–V28 values are transformed features
-        from the source dataset; they are not ordinary transaction fields.
-      </p>
-    </header>
+<main class="shell">
+<header class="head">
+<div class="brand"><div class="logo">F</div><div>
+<div class="eyebrow">Machine Learning · Random Forest</div>
+<h1>FraudWatch Dashboard</h1>
+<p class="sub">Credit card transaction risk analysis and demo dataset review.</p>
+</div></div>
+<div class="status-pill" id="apiStatus">Checking API…</div>
+</header>
 
-    <section class="panel">
-      <div class="topline">
-        <h2>Transaction feature values</h2>
-        <div class="actions">
-          <button type="button" class="secondary" id="fillDemo">
-            Fill demo values
-          </button>
-          <button type="button" class="secondary" id="clear">
-            Reset
-          </button>
-        </div>
-      </div>
+<nav class="tabs" aria-label="Dashboard sections">
+<button class="tab active" data-page="overview">Overview</button>
+<button class="tab" data-page="inspect">Inspect a transaction</button>
+<button class="tab" data-page="csv">CSV analysis</button>
+</nav>
 
-      <form id="predictionForm">
-        <div class="grid" id="fields"></div>
-        <div class="submitrow">
-          <button class="primary" type="submit" id="submitBtn">
-            Check transaction
-          </button>
-          <span id="status" role="status" aria-live="polite"></span>
-        </div>
-      </form>
+<section class="page active" id="page-overview">
+<div class="metrics">
+<div class="metric"><div class="metric-label">Demo transactions</div><div class="metric-value" id="mTotal">—</div><div class="metric-note">Loaded from bundled sample CSV</div></div>
+<div class="metric"><div class="metric-label">Potential fraud</div><div class="metric-value" id="mFraud">—</div><div class="metric-note">Model probability ≥ 50%</div></div>
+<div class="metric"><div class="metric-label">Review required</div><div class="metric-value" id="mReview">—</div><div class="metric-note">Model probability 30–49.99%</div></div>
+<div class="metric"><div class="metric-label">Likely legitimate</div><div class="metric-value" id="mLegit">—</div><div class="metric-note">Model probability below 30%</div></div>
+</div>
+<div class="layout">
+<div class="card">
+<div class="section-head"><div><h2>Recent demo predictions</h2><div class="muted">Latest rows from the sample dataset.</div></div><button class="btn secondary" id="refreshBtn">Refresh</button></div>
+<div class="table-wrap"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th></tr></thead><tbody id="recentBody"><tr><td colspan="4">Loading sample transactions…</td></tr></tbody></table></div>
+</div>
+<div class="card">
+<h2>How to use FraudWatch</h2><div class="spacer"></div>
+<p class="muted">Inspect a transaction to review a demo record by ID, or upload a CSV containing the model's 30 required features for batch analysis.</p>
+<div class="notice"><strong>Dataset note:</strong> The bundled demo records are sampled from a public anonymized credit-card dataset. The demo IDs are labels for this project, not real bank transaction IDs or Indian bank records.</div>
+<div class="notice"><strong>Model note:</strong> The probability is the model's estimate, not a guarantee. This project is for demonstration and evaluation, not live financial decisions.</div>
+</div>
+</div>
+<div id="overviewMessage" class="muted" style="margin-top:12px"></div>
+</section>
 
-      <div class="result" id="result" aria-live="polite"></div>
+<section class="page" id="page-inspect">
+<div class="card">
+<div class="section-head"><div><h2>Inspect a transaction</h2><div class="muted">Select a record from the bundled demo sample and inspect the model result.</div></div></div>
+<div class="form-grid">
+<div><label class="field-label" for="transactionSelect">Demo transaction ID</label><select id="transactionSelect"><option>Loading demo transactions…</option></select></div>
+<div style="display:flex;align-items:end"><button class="btn primary" id="inspectBtn">Inspect transaction</button></div>
+</div>
+<div id="inspectMessage" style="margin-top:14px"></div>
+<div id="inspectResult" class="hidden"></div>
+<div class="notice">The actual label is shown only because this bundled dataset is an evaluation sample with known labels. In a real screening workflow, actual labels would not be known at prediction time.</div>
+</div>
+</section>
 
-      <div class="warning">
-        <strong>Important:</strong> The demo button fills every feature with
-        zero only to test whether the deployed API works. It is not a realistic
-        transaction and does not demonstrate model accuracy. Use correctly
-        prepared sample data and evaluate false positives and false negatives
-        before drawing conclusions.
-      </div>
-    </section>
-  </main>
+<section class="page" id="page-csv">
+<div class="card">
+<div class="section-head"><div><h2>CSV analysis</h2><div class="muted">Upload transactions for batch predictions. Required columns: Time, V1–V28, Amount.</div></div></div>
+<label class="field-label" for="csvFile">Choose CSV file</label>
+<input type="file" id="csvFile" accept=".csv,text/csv">
+<div class="file-info">Optional columns: Demo_Transaction_ID (or Transaction ID) and Class (0 = legitimate, 1 = fraud). Max 500 rows per upload.</div>
+<div class="btn-row" style="margin-top:15px">
+<button class="btn primary" id="analyzeCsvBtn">Analyze CSV</button>
+<button class="btn secondary" id="clearCsvBtn">Clear</button>
+<button class="btn quiet hidden" id="downloadBtn">Download results CSV</button>
+</div>
+<div id="csvMessage" style="margin-top:14px"></div>
+<div id="csvSummary" class="metrics hidden" style="margin-top:16px"></div>
+<div id="csvTableWrap" class="table-wrap hidden" style="margin-top:14px"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th><th>Actual label</th></tr></thead><tbody id="csvBody"></tbody></table></div>
+</div>
+</section>
+
+<div class="footer">FraudWatch portfolio demo · Random Forest · For demonstration only.</div>
+</main>
 
 <script>
-"use strict";
+'use strict';
 
-const API_ENDPOINT = "/api";
+const API='/api';
+const FEATURES=['Time',...Array.from({length:28},(_,i)=>'V'+(i+1)),'Amount'];
+let sampleRows=[];
+let sampleResults=[];
+let csvResults=[];
+const $=id=>document.getElementById(id);
 
-const features = [
-  "Time", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9",
-  "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18",
-  "V19", "V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27",
-  "V28", "Amount"
-];
+function esc(value){
+ return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
-const fields = document.getElementById("fields");
-const form = document.getElementById("predictionForm");
-const result = document.getElementById("result");
-const status = document.getElementById("status");
-const submitButton = document.getElementById("submitBtn");
-const demoButton = document.getElementById("fillDemo");
-const clearButton = document.getElementById("clear");
+function parseCSV(text){
+ const rows=[];let row=[],field='',quoted=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(quoted){
+   if(c==='"'&&text[i+1]==='"'){field+='"';i++;}
+   else if(c==='"'){quoted=false;}
+   else{field+=c;}
+  }else if(c==='"'){quoted=true;}
+  else if(c===','){row.push(field);field='';}
+  else if(c==='\n'){row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);row=[];field='';}
+  else{field+=c;}
+ }
+ if(field!==''||row.length){row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);}
+ if(!rows.length)return[];
+ const headers=rows.shift().map(h=>h.trim());
+ return rows.map(cols=>{
+  const obj={};
+  headers.forEach((h,i)=>obj[h]=(cols[i]??'').trim());
+  return obj;
+ });
+}
 
-features.forEach((name) => {
-  const box = document.createElement("div");
+function getKey(obj,wanted){
+ const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+ const found=Object.keys(obj).find(k=>norm(k)===norm(wanted));
+ return found===undefined?undefined:obj[found];
+}
 
-  const label = document.createElement("label");
-  label.htmlFor = "feature-" + name;
-  label.textContent = name;
-
-  const input = document.createElement("input");
-  input.id = "feature-" + name;
-  input.name = name;
-  input.type = "number";
-  input.step = "any";
-  input.required = true;
-  input.value = "0";
-  input.inputMode = "decimal";
-
-  box.append(label, input);
-  fields.append(box);
-});
-
-demoButton.addEventListener("click", () => {
-  features.forEach((name) => {
-    document.getElementById("feature-" + name).value = "0";
-  });
-
-  result.className = "result";
-  result.replaceChildren();
-  status.textContent =
-    "Demo values filled. These are not real transaction data.";
-});
-
-clearButton.addEventListener("click", () => {
-  form.reset();
-
-  features.forEach((name) => {
-    document.getElementById("feature-" + name).value = "";
-  });
-
-  result.className = "result";
-  result.replaceChildren();
-  status.textContent = "";
-});
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const values = {};
-
-  for (const name of features) {
-    const input = document.getElementById("feature-" + name);
-    const raw = input.value.trim();
-
-    if (raw === "" || !Number.isFinite(Number(raw))) {
-      status.textContent = "Enter a valid number for every feature.";
-      input.focus();
-      return;
-    }
-
-    values[name] = Number(raw);
+function toTransaction(row,index){
+ const features={};
+ for(const name of FEATURES){
+  const v=getKey(row,name);
+  if(v===undefined||String(v).trim()===''||!Number.isFinite(Number(v))){
+   throw new Error(`Row ${index+2}: missing or invalid value for ${name}.`);
   }
+  features[name]=Number(v);
+ }
+ const id=getKey(row,'Demo_Transaction_ID')??getKey(row,'Transaction_ID')??getKey(row,'Transaction ID')??`CSV-${String(index+1).padStart(4,'0')}`;
+ const actual=getKey(row,'Class');
+ return {transaction_id:String(id),features,...(actual!==undefined&&actual!==''?{Class:actual}:{})};
+}
 
-  submitButton.disabled = true;
-  demoButton.disabled = true;
-  clearButton.disabled = true;
-  submitButton.textContent = "Checking…";
-  status.textContent = "Sending values to the model…";
-  result.className = "result";
-  result.replaceChildren();
+async function apiPost(body){
+ const response=await fetch(API,{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify(body)
+ });
+ const text=await response.text();
+ let data;
+ try{data=JSON.parse(text);}
+ catch{throw new Error('API returned a non-JSON response. Check the Vercel deployment and function logs.');}
+ if(!response.ok)throw new Error(data.error||`API request failed (${response.status}).`);
+ return data;
+}
 
-  try {
-    const response = await fetch(API_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ features: values })
-    });
+function riskBadge(risk){
+ const c=risk==='POTENTIAL FRAUD'?'fraud':risk==='REVIEW REQUIRED'?'review':'legit';
+ return `<span class="badge ${c}">${esc(risk)}</span>`;
+}
 
-    const responseText = await response.text();
-    let data;
+function probability(p){
+ return p==null?'Not available':(Number(p)*100).toFixed(2)+'%';
+}
 
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      throw new Error(
-        "The server returned a non-JSON response. Check the Vercel deployment and API logs."
-      );
-    }
+function setTab(name){
+ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.page===name));
+ document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.page)));
 
-    if (!response.ok) {
-      throw new Error(data.error || "The prediction request failed.");
-    }
+async function scoreBatch(transactions){
+ const all=[];
+ for(let i=0;i<transactions.length;i+=100){
+  const data=await apiPost({transactions:transactions.slice(i,i+100)});
+  all.push(...data.results);
+ }
+ return all;
+}
 
-    const heading = document.createElement("h3");
-    heading.textContent = data.label || "Prediction complete";
+function renderOverview(){
+ const count=r=>sampleResults.filter(x=>x.risk_assessment===r).length;
+ $('mTotal').textContent=sampleResults.length;
+ $('mFraud').textContent=count('POTENTIAL FRAUD');
+ $('mReview').textContent=count('REVIEW REQUIRED');
+ $('mLegit').textContent=count('LIKELY LEGITIMATE');
+ $('recentBody').innerHTML=sampleResults.slice(-10).reverse().map(r=>
+  `<tr><td>${esc(r.transaction_id)}</td><td>${Number(r.amount).toFixed(2)}</td><td>${riskBadge(r.risk_assessment)}</td><td>${probability(r.fraud_probability)}</td></tr>`
+ ).join('')||'<tr><td colspan="4">No predictions available.</td></tr>';
+}
 
-    const predictionLine = document.createElement("p");
-    const predictionLabel = document.createElement("strong");
-    predictionLabel.textContent = "Model class: ";
-    predictionLine.append(
-      predictionLabel,
-      document.createTextNode(String(data.prediction))
-    );
+function renderInspect(){
+ const id=$('transactionSelect').value;
+ const row=sampleRows.find(r=>String(getKey(r,'Demo_Transaction_ID'))===id);
+ const result=sampleResults.find(r=>r.transaction_id===id);
+ if(!row||!result){
+  $('inspectResult').classList.add('hidden');
+  $('inspectMessage').innerHTML='<div class="error">Could not find that transaction. Refresh the dashboard and try again.</div>';
+  return;
+ }
+ $('inspectMessage').innerHTML='';
+ const details=[
+  ['Transaction ID',id],
+  ['Amount',Number(result.amount).toFixed(2)],
+  ['Risk assessment',result.risk_assessment],
+  ['Fraud probability',probability(result.fraud_probability)],
+  ['Actual dataset label',result.actual_label||'Not provided'],
+  ['Model class',result.prediction]
+ ];
+ $('inspectResult').innerHTML=`<div class="detail-grid">${details.map(([k,v])=>`<div class="detail"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div><div class="notice">Predicted risk is based on the saved Random Forest model. Actual label is provided by the demo dataset for evaluation only.</div>`;
+ $('inspectResult').classList.remove('hidden');
+}
 
-    const probabilityLine = document.createElement("p");
-    const probabilityLabel = document.createElement("strong");
-    probabilityLabel.textContent =
-      "Model-estimated fraud probability: ";
+async function init(){
+ try{
+  const health=await fetch(API);
+  if(!health.ok)throw new Error('API status '+health.status);
+  await health.json();
+  $('apiStatus').textContent='API connected';
+  $('apiStatus').style.color='#17633a';
+  $('apiStatus').style.borderColor='#bce8cb';
 
-    const probability = data.fraud_probability == null
-      ? "Not available"
-      : (Number(data.fraud_probability) * 100).toFixed(2) + "%";
+  const response=await fetch('/demo_transactions.csv');
+  if(!response.ok)throw new Error('Bundled demo_transactions.csv could not be loaded. Upload this file to the repository root.');
+  sampleRows=parseCSV(await response.text());
+  if(!sampleRows.length)throw new Error('Bundled demo CSV is empty.');
 
-    probabilityLine.append(
-      probabilityLabel,
-      document.createTextNode(probability)
-    );
+  const transactions=sampleRows.map(toTransaction);
+  sampleResults=await scoreBatch(transactions);
+  renderOverview();
 
-    const noteLine = document.createElement("p");
-    noteLine.textContent = data.note || "";
+  $('transactionSelect').innerHTML=sampleRows.map(r=>{
+   const id=getKey(r,'Demo_Transaction_ID');
+   return `<option value="${esc(id)}">${esc(id)} — Amount ${Number(getKey(r,'Amount')).toFixed(2)}</option>`;
+  }).join('');
 
-    result.append(
-      heading,
-      predictionLine,
-      probabilityLine,
-      noteLine
-    );
+  $('overviewMessage').textContent=`Loaded ${sampleResults.length} bundled demo records. These are anonymized public-dataset samples, not live transactions.`;
+ }catch(e){
+  $('apiStatus').textContent='API/data issue';
+  $('overviewMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
+  $('recentBody').innerHTML='<tr><td colspan="4">Could not load predictions. Check API, CSV file, and deployment logs.</td></tr>';
+ }
+}
 
-    result.className = "result show";
-    status.textContent = "Prediction complete.";
-  } catch (error) {
-    status.textContent = error instanceof Error
-      ? error.message + " Check the Vercel function logs if this persists."
-      : "An unexpected error occurred. Check the Vercel function logs.";
-  } finally {
-    submitButton.disabled = false;
-    demoButton.disabled = false;
-    clearButton.disabled = false;
-    submitButton.textContent = "Check transaction";
-  }
+$('refreshBtn').addEventListener('click',async()=>{
+ const b=$('refreshBtn');b.disabled=true;b.textContent='Refreshing…';
+ try{
+  sampleResults=await scoreBatch(sampleRows.map(toTransaction));
+  renderOverview();
+  $('overviewMessage').textContent='Demo predictions refreshed.';
+ }catch(e){
+  $('overviewMessage').innerHTML=`<div class="error">${esc(e.message)}</div>`;
+ }finally{
+  b.disabled=false;b.textContent='Refresh';
+ }
 });
+
+$('inspectBtn').addEventListener('click',renderInspect);
+$('transactionSelect').addEventListener('change',renderInspect);
+
+function csvCell(v){
+ const s=String(v??'');
+ return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+
+$('analyzeCsvBtn').addEventListener('click',async()=>{
+ const file=$('csvFile').files[0];
+ if(!file){$('csvMessage').innerHTML='<div class="error">Choose a CSV file first.</div>';return;}
+ const b=$('analyzeCsvBtn');
+ b.disabled=true;b.textContent='Analyzing…';
+ $('csvMessage').textContent='Reading CSV and running predictions…';
+ $('csvSummary').classList.add('hidden');
+ $('csvTableWrap').classList.add('hidden');
+ $('downloadBtn').classList.add('hidden');
+
+ try{
+  const rows=parseCSV(await file.text());
+  if(!rows.length)throw new Error('The CSV file is empty.');
+  if(rows.length>500)throw new Error('This dashboard accepts up to 500 data rows per upload.');
+  const tx=rows.map(toTransaction);
+  csvResults=await scoreBatch(tx);
+
+  $('csvBody').innerHTML=csvResults.map(r=>
+   `<tr><td>${esc(r.transaction_id)}</td><td>${Number(r.amount).toFixed(2)}</td><td>${riskBadge(r.risk_assessment)}</td><td>${probability(r.fraud_probability)}</td><td>${esc(r.actual_label||'—')}</td></tr>`
+  ).join('');
+
+  const fraud=csvResults.filter(r=>r.risk_assessment==='POTENTIAL FRAUD').length;
+  const review=csvResults.filter(r=>r.risk_assessment==='REVIEW REQUIRED').length;
+  const legit=csvResults.filter(r=>r.risk_assessment==='LIKELY LEGITIMATE').length;
+
+  $('csvSummary').innerHTML=[
+   ['Transactions analyzed',csvResults.length],
+   ['Potential fraud',fraud],
+   ['Review required',review],
+   ['Likely legitimate',legit]
+  ].map(([k,v])=>`<div class="metric"><div class="metric-label">${esc(k)}</div><div class="metric-value">${v}</div></div>`).join('');
+
+  $('csvSummary').classList.remove('hidden');
+  $('csvTableWrap').classList.remove('hidden');
+  $('downloadBtn').classList.remove('hidden');
+  $('csvMessage').innerHTML=`<div class="success">Analysis complete: ${csvResults.length} transactions scored.</div>`;
+ }catch(e){
+  $('csvMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
+ }finally{
+  b.disabled=false;b.textContent='Analyze CSV';
+ }
+});
+
+$('downloadBtn').addEventListener('click',()=>{
+ if(!csvResults.length)return;
+ const columns=['transaction_id','amount','risk_assessment','fraud_probability','prediction','actual_label'];
+ const csv=[columns.join(','),...csvResults.map(r=>columns.map(c=>csvCell(r[c]??'')).join(','))].join('\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+ const a=document.createElement('a');
+ a.href=url;a.download='fraudwatch_predictions.csv';a.click();
+ URL.revokeObjectURL(url);
+});
+
+$('clearCsvBtn').addEventListener('click',()=>{
+ $('csvFile').value='';
+ $('csvMessage').textContent='';
+ $('csvSummary').innerHTML='';
+ $('csvSummary').classList.add('hidden');
+ $('csvTableWrap').classList.add('hidden');
+ $('csvBody').innerHTML='';
+ $('downloadBtn').classList.add('hidden');
+ csvResults=[];
+});
+
+init();
 </script>
 </body>
 </html>
