@@ -66,7 +66,7 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 <h1>FraudWatch Dashboard</h1>
 <p class="sub">Credit card transaction risk analysis and demo dataset review.</p>
 </div></div>
-<div class="status-pill" id="apiStatus">Checking API…</div>
+<div class="status-pill" id="apiStatus">Loading demo data…</div>
 </header>
 
 <nav class="tabs" aria-label="Dashboard sections">
@@ -77,7 +77,7 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 
 <section class="page active" id="page-overview">
 <div class="metrics">
-<div class="metric"><div class="metric-label">Demo transactions</div><div class="metric-value" id="mTotal">—</div><div class="metric-note">Loaded from bundled sample CSV</div></div>
+<div class="metric"><div class="metric-label">Demo transactions</div><div class="metric-value" id="mTotal">—</div><div class="metric-note">Loaded from sample CSV</div></div>
 <div class="metric"><div class="metric-label">Potential fraud</div><div class="metric-value" id="mFraud">—</div><div class="metric-note">Model probability ≥ 50%</div></div>
 <div class="metric"><div class="metric-label">Review required</div><div class="metric-value" id="mReview">—</div><div class="metric-note">Model probability 30–49.99%</div></div>
 <div class="metric"><div class="metric-label">Likely legitimate</div><div class="metric-value" id="mLegit">—</div><div class="metric-note">Model probability below 30%</div></div>
@@ -85,13 +85,13 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 <div class="layout">
 <div class="card">
 <div class="section-head"><div><h2>Recent demo predictions</h2><div class="muted">Latest rows from the sample dataset.</div></div><button class="btn secondary" id="refreshBtn">Refresh</button></div>
-<div class="table-wrap"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th></tr></thead><tbody id="recentBody"><tr><td colspan="4">Loading sample transactions…</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th></tr></thead><tbody id="recentBody"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
 </div>
 <div class="card">
 <h2>How to use FraudWatch</h2><div class="spacer"></div>
 <p class="muted">Inspect a transaction to review a demo record by ID, or upload a CSV containing the model's 30 required features for batch analysis.</p>
-<div class="notice"><strong>Dataset note:</strong> The bundled demo records are sampled from a public anonymized credit-card dataset. The demo IDs are labels for this project, not real bank transaction IDs or Indian bank records.</div>
-<div class="notice"><strong>Model note:</strong> The probability is the model's estimate, not a guarantee. This project is for demonstration and evaluation, not live financial decisions.</div>
+<div class="notice"><strong>Dataset note:</strong> Demo records are samples from a public anonymized credit-card dataset. Demo IDs are labels for this project, not real bank transaction IDs.</div>
+<div class="notice"><strong>Model note:</strong> Model probabilities are estimates, not guarantees. This project is for demonstration and evaluation, not live financial decisions.</div>
 </div>
 </div>
 <div id="overviewMessage" class="muted" style="margin-top:12px"></div>
@@ -99,23 +99,23 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 
 <section class="page" id="page-inspect">
 <div class="card">
-<div class="section-head"><div><h2>Inspect a transaction</h2><div class="muted">Select a record from the bundled demo sample and inspect the model result.</div></div></div>
+<div class="section-head"><div><h2>Inspect a transaction</h2><div class="muted">Select a demo record and inspect the model result.</div></div></div>
 <div class="form-grid">
-<div><label class="field-label" for="transactionSelect">Demo transaction ID</label><select id="transactionSelect"><option>Loading demo transactions…</option></select></div>
+<div><label class="field-label" for="transactionSelect">Demo transaction ID</label><select id="transactionSelect"><option value="">Loading demo transactions…</option></select></div>
 <div style="display:flex;align-items:end"><button class="btn primary" id="inspectBtn">Inspect transaction</button></div>
 </div>
 <div id="inspectMessage" style="margin-top:14px"></div>
 <div id="inspectResult" class="hidden"></div>
-<div class="notice">The actual label is shown only because this bundled dataset is an evaluation sample with known labels. In a real screening workflow, actual labels would not be known at prediction time.</div>
+<div class="notice">The actual label is shown only because this is an evaluation sample. Real transactions would not have known labels at prediction time.</div>
 </div>
 </section>
 
 <section class="page" id="page-csv">
 <div class="card">
-<div class="section-head"><div><h2>CSV analysis</h2><div class="muted">Upload transactions for batch predictions. Required columns: Time, V1–V28, Amount.</div></div></div>
+<div class="section-head"><div><h2>CSV analysis</h2><div class="muted">Required columns: Time, V1–V28, Amount.</div></div></div>
 <label class="field-label" for="csvFile">Choose CSV file</label>
 <input type="file" id="csvFile" accept=".csv,text/csv">
-<div class="file-info">Optional columns: Demo_Transaction_ID (or Transaction ID) and Class (0 = legitimate, 1 = fraud). Max 500 rows per upload.</div>
+<div class="file-info">Optional columns: Demo_Transaction_ID (or Transaction ID) and Class (0 = legitimate, 1 = fraud). Maximum 500 rows.</div>
 <div class="btn-row" style="margin-top:15px">
 <button class="btn primary" id="analyzeCsvBtn">Analyze CSV</button>
 <button class="btn secondary" id="clearCsvBtn">Clear</button>
@@ -126,7 +126,6 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 <div id="csvTableWrap" class="table-wrap hidden" style="margin-top:14px"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th><th>Actual label</th></tr></thead><tbody id="csvBody"></tbody></table></div>
 </div>
 </section>
-
 <div class="footer">FraudWatch portfolio demo · Random Forest · For demonstration only.</div>
 </main>
 
@@ -151,11 +150,11 @@ function parseCSV(text){
   if(quoted){
    if(c==='"'&&text[i+1]==='"'){field+='"';i++;}
    else if(c==='"'){quoted=false;}
-   else{field+=c;}
-  }else if(c==='"'){quoted=true;}
+   else field+=c;
+  }else if(c==='"')quoted=true;
   else if(c===','){row.push(field);field='';}
   else if(c==='\n'){row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);row=[];field='';}
-  else{field+=c;}
+  else field+=c;
  }
  if(field!==''||row.length){row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);}
  if(!rows.length)return[];
@@ -188,15 +187,10 @@ function toTransaction(row,index){
 }
 
 async function apiPost(body){
- const response=await fetch(API,{
-  method:'POST',
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify(body)
- });
+ const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  const text=await response.text();
  let data;
- try{data=JSON.parse(text);}
- catch{throw new Error('API returned a non-JSON response. Check the Vercel deployment and function logs.');}
+ try{data=JSON.parse(text);}catch{throw new Error('API returned a non-JSON response. Check the Vercel deployment.');}
  if(!response.ok)throw new Error(data.error||`API request failed (${response.status}).`);
  return data;
 }
@@ -205,10 +199,7 @@ function riskBadge(risk){
  const c=risk==='POTENTIAL FRAUD'?'fraud':risk==='REVIEW REQUIRED'?'review':'legit';
  return `<span class="badge ${c}">${esc(risk)}</span>`;
 }
-
-function probability(p){
- return p==null?'Not available':(Number(p)*100).toFixed(2)+'%';
-}
+function probability(p){return p==null?'Not available':(Number(p)*100).toFixed(2)+'%';}
 
 function setTab(name){
  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.page===name));
@@ -238,11 +229,11 @@ function renderOverview(){
 
 function renderInspect(){
  const id=$('transactionSelect').value;
- const row=sampleRows.find(r=>String(getKey(r,'Demo_Transaction_ID'))===id);
+ if(!id){$('inspectMessage').innerHTML='<div class="error">No demo transaction is available. Check that demo_transactions.csv exists in the repository root.</div>';return;}
  const result=sampleResults.find(r=>r.transaction_id===id);
- if(!row||!result){
+ if(!result){
   $('inspectResult').classList.add('hidden');
-  $('inspectMessage').innerHTML='<div class="error">Could not find that transaction. Refresh the dashboard and try again.</div>';
+  $('inspectMessage').innerHTML='<div class="error">The transaction is selectable, but its prediction is unavailable. Check the API status above.</div>';
   return;
  }
  $('inspectMessage').innerHTML='';
@@ -254,38 +245,47 @@ function renderInspect(){
   ['Actual dataset label',result.actual_label||'Not provided'],
   ['Model class',result.prediction]
  ];
- $('inspectResult').innerHTML=`<div class="detail-grid">${details.map(([k,v])=>`<div class="detail"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div><div class="notice">Predicted risk is based on the saved Random Forest model. Actual label is provided by the demo dataset for evaluation only.</div>`;
+ $('inspectResult').innerHTML=`<div class="detail-grid">${details.map(([k,v])=>`<div class="detail"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div><div class="notice">Prediction is based on the saved Random Forest model. Actual label is shown for demo evaluation only.</div>`;
  $('inspectResult').classList.remove('hidden');
 }
 
 async function init(){
+ // IMPORTANT: load the CSV and populate the selector before checking the API.
+ try{
+  const response=await fetch('/demo_transactions.csv');
+  if(!response.ok)throw new Error('demo_transactions.csv is missing from the repository root.');
+  sampleRows=parseCSV(await response.text());
+  if(!sampleRows.length)throw new Error('The demo CSV contains no transactions.');
+
+  $('transactionSelect').innerHTML=sampleRows.map(r=>{
+   const id=getKey(r,'Demo_Transaction_ID')??getKey(r,'Transaction_ID')??getKey(r,'Transaction ID');
+   const amount=Number(getKey(r,'Amount'));
+   return `<option value="${esc(id)}">${esc(id)} — Amount ${Number.isFinite(amount)?amount.toFixed(2):'—'}</option>`;
+  }).join('');
+
+  $('apiStatus').textContent='Demo data loaded';
+  $('overviewMessage').textContent=`Loaded ${sampleRows.length} demo transaction records. Checking prediction API…`;
+ }catch(e){
+  $('apiStatus').textContent='Demo data error';
+  $('overviewMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
+  $('transactionSelect').innerHTML='<option value="">Demo data unavailable</option>';
+  $('recentBody').innerHTML='<tr><td colspan="4">Could not load the demo CSV.</td></tr>';
+  return;
+ }
+
+ // Prediction API failures must not empty the already populated dropdown.
  try{
   const health=await fetch(API);
   if(!health.ok)throw new Error('API status '+health.status);
   await health.json();
   $('apiStatus').textContent='API connected';
-  $('apiStatus').style.color='#17633a';
-  $('apiStatus').style.borderColor='#bce8cb';
-
-  const response=await fetch('/demo_transactions.csv');
-  if(!response.ok)throw new Error('Bundled demo_transactions.csv could not be loaded. Upload this file to the repository root.');
-  sampleRows=parseCSV(await response.text());
-  if(!sampleRows.length)throw new Error('Bundled demo CSV is empty.');
-
-  const transactions=sampleRows.map(toTransaction);
-  sampleResults=await scoreBatch(transactions);
+  sampleResults=await scoreBatch(sampleRows.map(toTransaction));
   renderOverview();
-
-  $('transactionSelect').innerHTML=sampleRows.map(r=>{
-   const id=getKey(r,'Demo_Transaction_ID');
-   return `<option value="${esc(id)}">${esc(id)} — Amount ${Number(getKey(r,'Amount')).toFixed(2)}</option>`;
-  }).join('');
-
-  $('overviewMessage').textContent=`Loaded ${sampleResults.length} bundled demo records. These are anonymized public-dataset samples, not live transactions.`;
+  $('overviewMessage').textContent=`Loaded ${sampleResults.length} demo records and generated predictions.`;
  }catch(e){
-  $('apiStatus').textContent='API/data issue';
-  $('overviewMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
-  $('recentBody').innerHTML='<tr><td colspan="4">Could not load predictions. Check API, CSV file, and deployment logs.</td></tr>';
+  $('apiStatus').textContent='Prediction API error';
+  $('overviewMessage').innerHTML=`<div class="error">The dropdown is loaded, but predictions failed: ${esc(e.message||String(e))}</div>`;
+  $('recentBody').innerHTML='<tr><td colspan="4">Predictions unavailable. The transaction selector should still be usable.</td></tr>';
  }
 }
 
@@ -295,11 +295,8 @@ $('refreshBtn').addEventListener('click',async()=>{
   sampleResults=await scoreBatch(sampleRows.map(toTransaction));
   renderOverview();
   $('overviewMessage').textContent='Demo predictions refreshed.';
- }catch(e){
-  $('overviewMessage').innerHTML=`<div class="error">${esc(e.message)}</div>`;
- }finally{
-  b.disabled=false;b.textContent='Refresh';
- }
+ }catch(e){$('overviewMessage').innerHTML=`<div class="error">${esc(e.message)}</div>`;}
+ finally{b.disabled=false;b.textContent='Refresh';}
 });
 
 $('inspectBtn').addEventListener('click',renderInspect);
@@ -313,44 +310,25 @@ function csvCell(v){
 $('analyzeCsvBtn').addEventListener('click',async()=>{
  const file=$('csvFile').files[0];
  if(!file){$('csvMessage').innerHTML='<div class="error">Choose a CSV file first.</div>';return;}
- const b=$('analyzeCsvBtn');
- b.disabled=true;b.textContent='Analyzing…';
+ const b=$('analyzeCsvBtn');b.disabled=true;b.textContent='Analyzing…';
  $('csvMessage').textContent='Reading CSV and running predictions…';
- $('csvSummary').classList.add('hidden');
- $('csvTableWrap').classList.add('hidden');
- $('downloadBtn').classList.add('hidden');
-
+ $('csvSummary').classList.add('hidden');$('csvTableWrap').classList.add('hidden');$('downloadBtn').classList.add('hidden');
  try{
   const rows=parseCSV(await file.text());
   if(!rows.length)throw new Error('The CSV file is empty.');
-  if(rows.length>500)throw new Error('This dashboard accepts up to 500 data rows per upload.');
-  const tx=rows.map(toTransaction);
-  csvResults=await scoreBatch(tx);
-
+  if(rows.length>500)throw new Error('Maximum 500 data rows per upload.');
+  csvResults=await scoreBatch(rows.map(toTransaction));
   $('csvBody').innerHTML=csvResults.map(r=>
    `<tr><td>${esc(r.transaction_id)}</td><td>${Number(r.amount).toFixed(2)}</td><td>${riskBadge(r.risk_assessment)}</td><td>${probability(r.fraud_probability)}</td><td>${esc(r.actual_label||'—')}</td></tr>`
   ).join('');
-
   const fraud=csvResults.filter(r=>r.risk_assessment==='POTENTIAL FRAUD').length;
   const review=csvResults.filter(r=>r.risk_assessment==='REVIEW REQUIRED').length;
   const legit=csvResults.filter(r=>r.risk_assessment==='LIKELY LEGITIMATE').length;
-
-  $('csvSummary').innerHTML=[
-   ['Transactions analyzed',csvResults.length],
-   ['Potential fraud',fraud],
-   ['Review required',review],
-   ['Likely legitimate',legit]
-  ].map(([k,v])=>`<div class="metric"><div class="metric-label">${esc(k)}</div><div class="metric-value">${v}</div></div>`).join('');
-
-  $('csvSummary').classList.remove('hidden');
-  $('csvTableWrap').classList.remove('hidden');
-  $('downloadBtn').classList.remove('hidden');
+  $('csvSummary').innerHTML=[['Transactions analyzed',csvResults.length],['Potential fraud',fraud],['Review required',review],['Likely legitimate',legit]].map(([k,v])=>`<div class="metric"><div class="metric-label">${esc(k)}</div><div class="metric-value">${v}</div></div>`).join('');
+  $('csvSummary').classList.remove('hidden');$('csvTableWrap').classList.remove('hidden');$('downloadBtn').classList.remove('hidden');
   $('csvMessage').innerHTML=`<div class="success">Analysis complete: ${csvResults.length} transactions scored.</div>`;
- }catch(e){
-  $('csvMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;
- }finally{
-  b.disabled=false;b.textContent='Analyze CSV';
- }
+ }catch(e){$('csvMessage').innerHTML=`<div class="error">${esc(e.message||String(e))}</div>`;}
+ finally{b.disabled=false;b.textContent='Analyze CSV';}
 });
 
 $('downloadBtn').addEventListener('click',()=>{
@@ -358,20 +336,11 @@ $('downloadBtn').addEventListener('click',()=>{
  const columns=['transaction_id','amount','risk_assessment','fraud_probability','prediction','actual_label'];
  const csv=[columns.join(','),...csvResults.map(r=>columns.map(c=>csvCell(r[c]??'')).join(','))].join('\n');
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
- const a=document.createElement('a');
- a.href=url;a.download='fraudwatch_predictions.csv';a.click();
- URL.revokeObjectURL(url);
+ const a=document.createElement('a');a.href=url;a.download='fraudwatch_predictions.csv';a.click();URL.revokeObjectURL(url);
 });
 
 $('clearCsvBtn').addEventListener('click',()=>{
- $('csvFile').value='';
- $('csvMessage').textContent='';
- $('csvSummary').innerHTML='';
- $('csvSummary').classList.add('hidden');
- $('csvTableWrap').classList.add('hidden');
- $('csvBody').innerHTML='';
- $('downloadBtn').classList.add('hidden');
- csvResults=[];
+ $('csvFile').value='';$('csvMessage').textContent='';$('csvSummary').innerHTML='';$('csvSummary').classList.add('hidden');$('csvTableWrap').classList.add('hidden');$('csvBody').innerHTML='';$('downloadBtn').classList.add('hidden');csvResults=[];
 });
 
 init();
