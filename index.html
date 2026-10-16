@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Credit Card Fraud Detection</title>
+  <style>
+    :root { color-scheme: light; --ink:#172033; --muted:#65718a; --line:#e2e8f0; --brand:#3157d5; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:#f5f7fb; }
+    .wrap { max-width:1050px; margin:0 auto; padding:36px 20px 56px; }
+    header { margin-bottom:24px; }
+    .eyebrow { color:var(--brand); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:9px 0 8px; font-size:clamp(28px,4vw,40px); letter-spacing:-.04em; }
+    .sub { margin:0; max-width:760px; color:var(--muted); line-height:1.6; }
+    .panel { background:white; border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:0 10px 35px rgba(20,35,70,.05); }
+    .topline { display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:18px; }
+    h2 { margin:0; font-size:19px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    button { border:0; border-radius:10px; padding:11px 15px; font-weight:700; cursor:pointer; }
+    .secondary { background:#eef2ff; color:#263e9e; }
+    .primary { background:var(--brand); color:white; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    label { display:block; color:#4b5872; font-size:12px; font-weight:700; margin-bottom:6px; }
+    input { width:100%; border:1px solid #d9e0eb; border-radius:9px; padding:10px 11px; font-size:14px; color:var(--ink); background:#fff; }
+    input:focus { outline:2px solid #c8d3ff; border-color:var(--brand); }
+    .submitrow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:22px; }
+    .result { display:none; margin-top:22px; padding:18px; border-radius:12px; border:1px solid var(--line); background:#f8fafc; }
+    .result.show { display:block; }
+    .result h3 { margin:0 0 8px; }
+    .result p { margin:5px 0; color:#4b5872; line-height:1.5; }
+    .warning { margin-top:18px; padding:13px 15px; border-radius:10px; background:#fff8e7; color:#79551b; font-size:13px; line-height:1.55; }
+    #status { color:var(--muted); font-size:13px; }
+    @media(max-width:720px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .panel { padding:18px; } }
+    @media(max-width:440px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">Machine Learning Project</div>
+      <h1>Credit Card Fraud Detection</h1>
+      <p class="sub">Enter the 30 model features to get a prediction from your trained Random Forest classifier. The V1–V28 values are transformed features from the source dataset; they are not ordinary transaction fields.</p>
+    </header>
+    <section class="panel">
+      <div class="topline">
+        <h2>Transaction feature values</h2>
+        <div class="actions">
+          <button type="button" class="secondary" id="fillDemo">Fill demo values</button>
+          <button type="button" class="secondary" id="clear">Reset</button>
+        </div>
+      </div>
+      <form id="predictionForm">
+        <div class="grid" id="fields"></div>
+        <div class="submitrow">
+          <button class="primary" type="submit" id="submitBtn">Check transaction</button>
+          <span id="status" role="status"></span>
+        </div>
+      </form>
+      <div class="result" id="result" aria-live="polite"></div>
+      <div class="warning"><strong>Important:</strong> The demo button fills every feature with zero only to test whether the deployed API works. It is not a realistic transaction and does not demonstrate model accuracy. Use correctly prepared sample data and evaluate false positives/false negatives before drawing conclusions.</div>
+    </section>
+  </main>
+<script>
+const features = ["Time","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12","V13","V14","V15","V16","V17","V18","V19","V20","V21","V22","V23","V24","V25","V26","V27","V28","Amount"];
+const fields = document.getElementById("fields");
+features.forEach((name) => {
+  const box = document.createElement("div");
+  const label = document.createElement("label");
+  label.htmlFor = "feature-" + name;
+  label.textContent = name;
+  const input = document.createElement("input");
+  input.id = "feature-" + name;
+  input.name = name;
+  input.type = "number";
+  input.step = "any";
+  input.required = true;
+  input.value = "0";
+  input.inputMode = "decimal";
+  box.append(label, input);
+  fields.append(box);
+});
+const form = document.getElementById("predictionForm");
+const result = document.getElementById("result");
+const status = document.getElementById("status");
+document.getElementById("fillDemo").addEventListener("click", () => {
+  features.forEach(name => document.getElementById("feature-" + name).value = "0");
+  status.textContent = "Demo values filled. These are not real transaction data.";
+});
+document.getElementById("clear").addEventListener("click", () => {
+  form.reset();
+  features.forEach(name => document.getElementById("feature-" + name).value = "");
+  result.className = "result";
+  result.innerHTML = "";
+  status.textContent = "";
+});
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = document.getElementById("submitBtn");
+  const values = {};
+  for (const name of features) {
+    const raw = document.getElementById("feature-" + name).value;
+    if (raw.trim() === "" || !Number.isFinite(Number(raw))) {
+      status.textContent = "Enter a valid number for every feature.";
+      return;
+    }
+    values[name] = Number(raw);
+  }
+  button.disabled = true;
+  button.textContent = "Checking…";
+  status.textContent = "Sending values to the model…";
+  result.className = "result";
+  try {
+    const response = await fetch("/api/predict", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({features: values})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "The prediction request failed.");
+    result.className = "result show";
+    const percent = data.fraud_probability == null ? "Not available" : (data.fraud_probability * 100).toFixed(2) + "%";
+    result.innerHTML = `<h3>${data.label}</h3><p><strong>Model class:</strong> ${data.prediction}</p><p><strong>Model-estimated fraud probability:</strong> ${percent}</p><p>${data.note}</p>`;
+    status.textContent = "Prediction complete.";
+  } catch (error) {
+    status.textContent = error.message + " If this is deployed, check the Vercel function logs.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Check transaction";
+  }
+});
+</script>
+</body>
+</html>
