@@ -26,7 +26,7 @@ h1{font-size:clamp(25px,4vw,35px);margin:3px 0 0;letter-spacing:-.04em}
 h2{font-size:18px;margin:0}h3{font-size:15px;margin:0 0 12px}
 .muted{color:var(--muted);font-size:13px;line-height:1.5}
 .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:17px}
-.metric{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px}
+.metric{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px;min-width:0}
 .metric-label{color:var(--muted);font-size:12px;font-weight:700}
 .metric-value{font-size:28px;font-weight:850;letter-spacing:-.04em;margin-top:8px;overflow-wrap:anywhere}
 .metric-note{font-size:11px;color:var(--muted);margin-top:4px}
@@ -123,9 +123,33 @@ select,input[type=file]{width:100%;padding:11px;border:1px solid #d6deea;border-
 </div>
 <div id="csvMessage" style="margin-top:14px"></div>
 <div id="csvSummary" class="metrics hidden" style="margin-top:16px"></div>
+
+<!-- NEW: Evaluation metrics -->
+<div id="evaluationSection" class="card hidden" style="margin-top:16px">
+<div class="section-head">
+<div>
+<h2>Model Evaluation</h2>
+<div class="muted" id="evaluationNote">Comparing model predictions with actual dataset labels.</div>
+</div>
+</div>
+<div id="evaluationMetrics" class="metrics"></div>
+<h3>Confusion Matrix</h3>
+<p class="muted">Rows represent actual labels; columns represent model predictions.</p>
+<div class="table-wrap">
+<table style="min-width:0">
+<thead><tr><th>Actual / Predicted</th><th>Legitimate (0)</th><th>Fraud (1)</th></tr></thead>
+<tbody id="confusionBody"></tbody>
+</table>
+</div>
+<div class="notice">
+Metrics use only rows with valid actual Class labels. Accuracy alone can be misleading for imbalanced fraud datasets. Evaluate results on data that was not used to train the model.
+</div>
+</div>
+
 <div id="csvTableWrap" class="table-wrap hidden" style="margin-top:14px"><table><thead><tr><th>Transaction ID</th><th>Amount</th><th>Risk assessment</th><th>Fraud probability</th><th>Actual label</th></tr></thead><tbody id="csvBody"></tbody></table></div>
 </div>
 </section>
+
 <div class="footer">FraudWatch portfolio demo · Random Forest · For demonstration only.</div>
 </main>
 
@@ -328,7 +352,7 @@ function renderOverview(){
  ).join('')||'<tr><td colspan="4">No predictions available.</td></tr>';
 }
 
-/* Inspect the prediction and original amount from the same active row. */
+/* Inspect a transaction using its corresponding active row and prediction. */
 function renderInspect(){
  const id=$('transactionSelect').value;
  const index=activeRows.findIndex((row,i)=>transactionId(row,i)===id);
@@ -438,10 +462,17 @@ $('refreshBtn').addEventListener('click',async()=>{
   if(activeDatasetName==='Demo sample'){
    demoResults=refreshed.slice();
   }else{
-   uploadedResults=refreshed.slice();
+   uploadedResults=refreshed.map((r,index)=>({
+    ...r,
+    transaction_id:transactionId(activeRows[index],index),
+    amount:Number(getKey(activeRows[index],'Amount'))
+   }));
+   activeResults=uploadedResults.slice();
   }
 
   renderOverview();
+
+  if(activeDatasetName!=='Demo sample')renderCsvResults();
 
   $('overviewMessage').textContent=
    `Predictions refreshed for ${activeDatasetName}.`;
@@ -459,6 +490,69 @@ $('transactionSelect').addEventListener('change',renderInspect);
 function csvCell(v){
  const s=String(v??'');
  return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+
+/* NEW: Calculate evaluation metrics from actual Class labels and model predictions. */
+function renderEvaluation(){
+ const section=$('evaluationSection');
+
+ const labeled=uploadedResults.filter(r=>
+  (r.actual_label==='FRAUD'||r.actual_label==='LEGITIMATE') &&
+  (Number(r.prediction)===0||Number(r.prediction)===1)
+ );
+
+ if(!labeled.length){
+  section.classList.add('hidden');
+  $('evaluationMetrics').innerHTML='';
+  $('confusionBody').innerHTML='';
+  $('evaluationNote').textContent=
+   'No valid actual Class labels found. Upload a CSV containing Class (0 or 1) to evaluate the model.';
+  return;
+ }
+
+ let tn=0,fp=0,fn=0,tp=0;
+
+ labeled.forEach(r=>{
+  const actual=r.actual_label==='FRAUD'?1:0;
+  const predicted=Number(r.prediction);
+
+  if(actual===1&&predicted===1)tp++;
+  else if(actual===0&&predicted===0)tn++;
+  else if(actual===0&&predicted===1)fp++;
+  else if(actual===1&&predicted===0)fn++;
+ });
+
+ const total=tp+tn+fp+fn;
+ const accuracy=(tp+tn)/total;
+ const precision=tp+fp?tp/(tp+fp):0;
+ const recall=tp+fn?tp/(tp+fn):0;
+ const f1=precision+recall?2*precision*recall/(precision+recall):0;
+ const percent=n=>(n*100).toFixed(2)+'%';
+
+ const metrics=[
+  ['Rows evaluated',total],
+  ['Accuracy',percent(accuracy)],
+  ['Precision (fraud)',percent(precision)],
+  ['Recall (fraud)',percent(recall)],
+  ['F1 Score',percent(f1)]
+ ];
+
+ $('evaluationMetrics').innerHTML=metrics.map(([label,value])=>`
+  <div class="metric">
+   <div class="metric-label">${esc(label)}</div>
+   <div class="metric-value">${esc(value)}</div>
+  </div>
+ `).join('');
+
+ $('confusionBody').innerHTML=`
+  <tr><th>LEGITIMATE (0)</th><td>${tn}</td><td>${fp}</td></tr>
+  <tr><th>FRAUD (1)</th><td>${fn}</td><td>${tp}</td></tr>
+ `;
+
+ $('evaluationNote').textContent=
+  `Evaluated ${total} transactions against their actual Class labels.`;
+
+ section.classList.remove('hidden');
 }
 
 function renderCsvResults(){
@@ -491,6 +585,8 @@ function renderCsvResults(){
  $('csvSummary').classList.remove('hidden');
  $('csvTableWrap').classList.remove('hidden');
  $('downloadBtn').classList.remove('hidden');
+
+ renderEvaluation();
 }
 
 $('analyzeCsvBtn').addEventListener('click',async()=>{
@@ -509,6 +605,7 @@ $('analyzeCsvBtn').addEventListener('click',async()=>{
 
  $('csvMessage').textContent='Reading CSV and running predictions…';
  $('csvSummary').classList.add('hidden');
+ $('evaluationSection').classList.add('hidden');
  $('csvTableWrap').classList.add('hidden');
  $('downloadBtn').classList.add('hidden');
 
@@ -523,10 +620,6 @@ $('analyzeCsvBtn').addEventListener('click',async()=>{
 
   if(thisOperation!==operationId)return;
 
-  /*
-   * Preserve the upload's transaction IDs and source amounts.
-   * Keep the prediction paired with its original row by index.
-   */
   uploadedResults=results.map((result,index)=>{
    const row=rows[index];
    const amount=Number(getKey(row,'Amount'));
@@ -549,9 +642,7 @@ $('analyzeCsvBtn').addEventListener('click',async()=>{
   $('overviewMessage').textContent=
    `Showing ${activeResults.length} predictions from uploaded file: ${file.name}.`;
 
-  $('inspectSubtitle').textContent=
-   `Select a transaction from ${file.name}.`;
-
+  $('inspectSubtitle').textContent=`Select a transaction from ${file.name}.`;
   $('inspectMessage').textContent='';
   $('inspectResult').classList.add('hidden');
 
@@ -607,6 +698,9 @@ $('clearCsvBtn').addEventListener('click',()=>{
  $('csvMessage').textContent='';
  $('csvSummary').innerHTML='';
  $('csvSummary').classList.add('hidden');
+ $('evaluationSection').classList.add('hidden');
+ $('evaluationMetrics').innerHTML='';
+ $('confusionBody').innerHTML='';
  $('csvTableWrap').classList.add('hidden');
  $('csvBody').innerHTML='';
  $('downloadBtn').classList.add('hidden');
